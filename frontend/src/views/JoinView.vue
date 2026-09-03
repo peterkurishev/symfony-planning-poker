@@ -18,12 +18,15 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="card narrow">
-    <h1 v-if="!error">Подключаемся к комнате…</h1>
-    <template v-else>
-      <h1>Не удалось войти</h1>
-      <p class="error">{{ error }}</p>
-      <RouterLink to="/rooms">К списку комнат</RouterLink>
+  <v-card class="mx-auto pa-6 text-center" max-width="440">
+    <template v-if="!error">
+      <v-progress-circular indeterminate color="primary" class="mb-4" />
+      <div>Подключаемся к комнате…</div>
     </template>
-  </div>
+    <template v-else>
+      <v-icon icon="mdi-door-closed-lock" size="48" color="error" class="mb-3" />
+      <v-alert type="error" variant="tonal" density="compact" class="mb-4">{{ error }}</v-alert>
+      <v-btn color="primary" to="/rooms">К списку комнат</v-btn>
+    </template>
+  </v-card>
 </template>

@@ -29,29 +29,40 @@ async function submit() {
 </script>
 
 <template>
-  <div class="card narrow">
-    <h1>Регистрация</h1>
-    <form @submit.prevent="submit">
-      <label>
-        Email
-        <input v-model="form.email" type="email" required autocomplete="email" />
-      </label>
-      <p v-if="errors.email" class="error">{{ errors.email }}</p>
-      <label>
-        Имя
-        <input v-model="form.name" type="text" required />
-      </label>
-      <p v-if="errors.name" class="error">{{ errors.name }}</p>
-      <label>
-        Пароль
-        <input v-model="form.password" type="password" required autocomplete="new-password" />
-      </label>
-      <p v-if="errors.password" class="error">{{ errors.password }}</p>
-      <p v-if="error" class="error">{{ error }}</p>
-      <div class="between">
-        <button type="submit" :disabled="busy">Создать аккаунт</button>
-        <RouterLink :to="{ name: 'login', query: route.query }">У меня есть аккаунт</RouterLink>
+  <v-card class="mx-auto pa-6" max-width="440">
+    <v-card-title class="text-h6 px-0">Регистрация</v-card-title>
+    <v-form @submit.prevent="submit">
+      <v-text-field
+        v-model="form.email"
+        label="Email"
+        type="email"
+        prepend-inner-icon="mdi-email-outline"
+        :error-messages="errors.email"
+        required
+      />
+      <v-text-field
+        v-model="form.name"
+        label="Имя"
+        prepend-inner-icon="mdi-account-outline"
+        :error-messages="errors.name"
+        required
+      />
+      <v-text-field
+        v-model="form.password"
+        label="Пароль"
+        type="password"
+        prepend-inner-icon="mdi-lock-outline"
+        :error-messages="errors.password"
+        autocomplete="new-password"
+        required
+      />
+      <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-4">
+        {{ error }}
+      </v-alert>
+      <div class="d-flex align-center justify-space-between">
+        <v-btn color="primary" type="submit" :loading="busy">Создать аккаунт</v-btn>
+        <v-btn variant="text" :to="{ name: 'login', query: route.query }">У меня есть аккаунт</v-btn>
       </div>
-    </form>
-  </div>
+    </v-form>
+  </v-card>
 </template>

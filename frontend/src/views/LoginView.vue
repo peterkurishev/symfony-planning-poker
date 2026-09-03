@@ -27,22 +27,34 @@ async function submit() {
 </script>
 
 <template>
-  <div class="card narrow">
-    <h1>Вход</h1>
-    <form @submit.prevent="submit">
-      <label>
-        Email
-        <input v-model="email" type="email" required autocomplete="email" />
-      </label>
-      <label>
-        Пароль
-        <input v-model="password" type="password" required autocomplete="current-password" />
-      </label>
-      <p v-if="error" class="error">{{ error }}</p>
-      <div class="between">
-        <button type="submit" :disabled="busy">Войти</button>
-        <RouterLink :to="{ name: 'register', query: route.query }">Зарегистрироваться</RouterLink>
+  <v-card class="mx-auto pa-6" max-width="440">
+    <v-card-title class="text-h6 px-0">Вход</v-card-title>
+    <v-form @submit.prevent="submit">
+      <v-text-field
+        v-model="email"
+        label="Email"
+        type="email"
+        prepend-inner-icon="mdi-email-outline"
+        autocomplete="email"
+        required
+      />
+      <v-text-field
+        v-model="password"
+        label="Пароль"
+        type="password"
+        prepend-inner-icon="mdi-lock-outline"
+        autocomplete="current-password"
+        required
+      />
+      <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-4">
+        {{ error }}
+      </v-alert>
+      <div class="d-flex align-center justify-space-between">
+        <v-btn color="primary" type="submit" :loading="busy">Войти</v-btn>
+        <v-btn variant="text" :to="{ name: 'register', query: route.query }">
+          Зарегистрироваться
+        </v-btn>
       </div>
-    </form>
-  </div>
+    </v-form>
+  </v-card>
 </template>

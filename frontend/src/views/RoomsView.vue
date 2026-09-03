@@ -7,13 +7,24 @@ const router = useRouter()
 const rooms = ref([])
 const error = ref('')
 const busy = ref(false)
+const loading = ref(true)
 const form = ref({ name: '', scale_type: 'fibonacci', scale_values: '', default_timer_sec: 60 })
+
+const scaleTypes = [
+  { title: 'Фибоначчи', value: 'fibonacci' },
+  { title: 'Степени двойки', value: 'pow2' },
+  { title: 'Произвольная', value: 'custom' },
+]
+
+const scaleTitle = (type) => scaleTypes.find((item) => item.value === type)?.title ?? type
 
 onMounted(async () => {
   try {
     rooms.value = await api.rooms()
   } catch (e) {
     error.value = e.message
+  } finally {
+    loading.value = false
   }
 })
 
@@ -37,42 +48,63 @@ async function create() {
 </script>
 
 <template>
-  <div class="card">
-    <h1>Новая комната</h1>
-    <form @submit.prevent="create">
-      <label>
-        Название
-        <input v-model="form.name" type="text" required />
-      </label>
-      <label>
-        Шкала оценки
-        <select v-model="form.scale_type">
-          <option value="fibonacci">Фибоначчи</option>
-          <option value="pow2">Степени двойки</option>
-          <option value="custom">Произвольная</option>
-        </select>
-      </label>
-      <label v-if="form.scale_type === 'custom'">
-        Значения через запятую
-        <input v-model="form.scale_values" type="text" placeholder="XS, S, M, L, XL" />
-      </label>
-      <label>
-        Таймер раунда, секунд
-        <input v-model="form.default_timer_sec" type="number" min="10" max="1800" />
-      </label>
-      <p v-if="error" class="error">{{ error }}</p>
-      <button type="submit" :disabled="busy">Создать комнату</button>
-    </form>
-  </div>
+  <v-card class="pa-6 mb-6">
+    <v-card-title class="text-h6 px-0">Новая комната</v-card-title>
+    <v-form @submit.prevent="create">
+      <v-row dense>
+        <v-col cols="12" md="6">
+          <v-text-field v-model="form.name" label="Название" required />
+        </v-col>
+        <v-col cols="12" md="4">
+          <v-select v-model="form.scale_type" :items="scaleTypes" label="Шкала оценки" />
+        </v-col>
+        <v-col cols="12" md="2">
+          <v-text-field
+            v-model="form.default_timer_sec"
+            label="Таймер, сек"
+            type="number"
+            min="10"
+            max="1800"
+          />
+        </v-col>
+        <v-col v-if="form.scale_type === 'custom'" cols="12">
+          <v-text-field
+            v-model="form.scale_values"
+            label="Значения через запятую"
+            placeholder="XS, S, M, L, XL"
+            hint="От 2 до 30 уникальных значений"
+            persistent-hint
+          />
+        </v-col>
+      </v-row>
+      <v-alert v-if="error" type="error" variant="tonal" density="compact" class="my-4">
+        {{ error }}
+      </v-alert>
+      <v-btn color="primary" type="submit" :loading="busy" prepend-icon="mdi-plus" class="mt-2">
+        Создать комнату
+      </v-btn>
+    </v-form>
+  </v-card>
 
-  <div class="card">
-    <h2>Мои комнаты</h2>
-    <p v-if="!rooms.length" class="muted">Комнат пока нет.</p>
-    <ul class="plain">
-      <li v-for="room in rooms" :key="room.id" class="between">
-        <RouterLink :to="{ name: 'room', params: { id: room.id } }">{{ room.name }}</RouterLink>
-        <span class="muted">{{ room.members.length }} участн. · {{ room.scale.type }}</span>
-      </li>
-    </ul>
-  </div>
+  <v-card>
+    <v-card-title class="text-h6">Мои комнаты</v-card-title>
+    <v-skeleton-loader v-if="loading" type="list-item-two-line@2" />
+    <v-card-text v-else-if="!rooms.length" class="text-medium-emphasis">
+      Комнат пока нет.
+    </v-card-text>
+    <v-list v-else lines="two">
+      <v-list-item
+        v-for="room in rooms"
+        :key="room.id"
+        :to="{ name: 'room', params: { id: room.id } }"
+        :title="room.name"
+        :subtitle="`${room.members.length} участн. · ${scaleTitle(room.scale.type)}`"
+        prepend-icon="mdi-account-group-outline"
+      >
+        <template #append>
+          <v-icon icon="mdi-chevron-right" />
+        </template>
+      </v-list-item>
+    </v-list>
+  </v-card>
 </template>
