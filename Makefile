@@ -1,4 +1,4 @@
-.PHONY: up down build logs sh console migrate diff install
+.PHONY: up down build logs sh console migrate diff install front-build worker-logs
 
 up:
 	docker compose up -d
@@ -26,3 +26,9 @@ diff:
 
 migrate:
 	docker compose exec php bin/console doctrine:migrations:migrate --no-interaction
+
+front-build:
+	docker compose exec frontend npm run build
+
+worker-logs:
+	docker compose logs -f worker
