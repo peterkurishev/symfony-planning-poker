@@ -36,10 +36,11 @@ test.describe('UC-08 Завершение раунда', () => {
     // У обоих: раунд завершён, голоса раскрыты поимённо, среднее и медиана.
     for (const p of [page, memberPage]) {
       const result = resultCard(p)
-      await expect(result.getByRole('heading', { name: `Результат: ${task.title}` })).toBeVisible()
+      await expect(result.getByRole('heading', { name: task.title })).toBeVisible()
       await expect(result.locator('tr', { hasText: owner.name })).toContainText('3')
       await expect(result.locator('tr', { hasText: member.name })).toContainText('8')
-      await expect(result.getByText(/Среднее 5[.,]5, медиана 5[.,]5/)).toBeVisible()
+      await expect(result.getByText(/Среднее: 5[.,]5/)).toBeVisible()
+      await expect(result.getByText(/Медиана: 5[.,]5/)).toBeVisible()
       await expect(activeRoundCard(p)).toHaveCount(0)
     }
 
@@ -49,16 +50,16 @@ test.describe('UC-08 Завершение раунда', () => {
     expect(finished.stats).toMatchObject({ average: 5.5, median: 5.5, suggestion: '5', spread: false })
 
     // Участник не фиксирует итог, владелец видит подсказку (ближайшее к медиане значение шкалы).
-    await expect(resultCard(memberPage).getByText('Зафиксировать итог:')).toHaveCount(0)
+    await expect(resultCard(memberPage).getByText('Зафиксировать итоговую оценку')).toHaveCount(0)
     const fixBlock = resultCard(page)
-    await expect(fixBlock.getByText('Зафиксировать итог:')).toBeVisible()
+    await expect(fixBlock.getByText('Зафиксировать итоговую оценку')).toBeVisible()
     await expect(voteCard(fixBlock, '5')).toHaveClass(/selected/)
 
     // Владелец выбирает другое значение — задача оценена, участник узнаёт через task.estimated.
     await voteCard(fixBlock, '8').click()
-    await expect(taskRow(page, task.title).locator('.badge.done')).toHaveText('8')
-    await expect(taskRow(memberPage, task.title).locator('.badge.done')).toHaveText('8')
-    await expect(fixBlock.getByText('Зафиксировать итог:')).toHaveCount(0)
+    await expect(taskRow(page, task.title).getByTestId('task-estimate')).toHaveText('8')
+    await expect(taskRow(memberPage, task.title).getByTestId('task-estimate')).toHaveText('8')
+    await expect(fixBlock.getByText('Зафиксировать итоговую оценку')).toHaveCount(0)
 
     const fresh = await (await page.request.get(`/api/rooms/${room.id}`)).json()
     expect(fresh.tasks.find((t) => t.id === task.id)).toMatchObject({ status: 'estimated', final_estimate: '8' })
@@ -75,7 +76,7 @@ test.describe('UC-08 Завершение раунда', () => {
     await page.getByLabel('Таймер, сек').fill('10')
     await taskRow(page, task.title).getByRole('button', { name: 'Начать оценку' }).click()
     await voteCard(activeRoundCard(page), '5').click()
-    await expect(activeRoundCard(page).locator('.timer')).toHaveText(/^00:0\d$/)
+    await expect(activeRoundCard(page).getByTestId('timer')).toHaveText(/^00:0\d$/)
 
     // Воркер закрывает раунд по дедлайну (или сработает ленивое завершение при перезагрузке данных).
     await expect(resultCard(page)).toBeVisible({ timeout: 30_000 })
@@ -132,7 +133,7 @@ test.describe('UC-08 Завершение раунда', () => {
     await openRoom(page, room.id, room.name)
     await expect(resultCard(page)).toBeVisible()
     await voteCard(resultCard(page), '13').click()
-    await expect(taskRow(page, task.title).locator('.badge.done')).toHaveText('13')
+    await expect(taskRow(page, task.title).getByTestId('task-estimate')).toHaveText('13')
   })
 
   test('5б: большой разброс голосов подсвечивается', async ({ page, browser }) => {

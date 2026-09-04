@@ -1,9 +1,16 @@
 FROM php:8.4-fpm-alpine
 
+# phpredis собираем из исходников с GitHub, а не через `pecl install`: PEAR внутри
+# контейнера не может открыть TLS-соединение с pecl.php.net и сборка падает.
+ARG PHPREDIS_VERSION=6.3.0
+
 RUN apk add --no-cache icu-dev libpq-dev linux-headers git unzip $PHPIZE_DEPS \
-    && docker-php-ext-install -j"$(nproc)" pdo_pgsql intl opcache \
-    && pecl install redis \
-    && docker-php-ext-enable redis \
+    && docker-php-source extract \
+    && mkdir -p /usr/src/php/ext/redis \
+    && curl -fsSL "https://github.com/phpredis/phpredis/archive/refs/tags/${PHPREDIS_VERSION}.tar.gz" \
+       | tar -xz --strip-components=1 -C /usr/src/php/ext/redis \
+    && docker-php-ext-install -j"$(nproc)" pdo_pgsql intl opcache redis \
+    && docker-php-source delete \
     && apk del $PHPIZE_DEPS
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer

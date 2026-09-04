@@ -120,9 +120,9 @@ const removeTask = (task) => run(() => api.deleteTask(task.id))
   <template v-if="room">
     <v-card class="pa-6 mb-6">
       <div class="d-flex align-center justify-space-between flex-wrap ga-2">
-        <div class="text-h6">{{ room.name }}</div>
+        <h1 class="text-h6 ma-0">{{ room.name }}</h1>
         <div class="d-flex ga-2">
-          <v-chip size="small" variant="tonal" prepend-icon="mdi-scale-balance">
+          <v-chip size="small" variant="tonal" prepend-icon="mdi-scale-balance" data-testid="room-scale">
             {{ room.scale.type }}
           </v-chip>
           <v-chip size="small" variant="tonal" prepend-icon="mdi-timer-outline">
@@ -131,11 +131,13 @@ const removeTask = (task) => run(() => api.deleteTask(task.id))
         </div>
       </div>
 
-      <div class="d-flex align-center flex-wrap ga-1 my-3">
+      <div class="d-flex align-center flex-wrap ga-1 my-3" data-testid="members">
         <v-chip
           v-for="member in room.members"
           :key="member.id"
           size="small"
+          data-testid="member"
+          :class="{ active: hasVoted(member.id) }"
           :color="hasVoted(member.id) ? 'success' : undefined"
           :variant="hasVoted(member.id) ? 'flat' : 'outlined'"
           :prepend-icon="hasVoted(member.id) ? 'mdi-check' : 'mdi-account-outline'"
@@ -149,16 +151,25 @@ const removeTask = (task) => run(() => api.deleteTask(task.id))
         label="Ссылка-приглашение"
         readonly
         hide-details
-        append-inner-icon="mdi-content-copy"
-        @click:append-inner="copyInvite"
-      />
+      >
+        <template #append-inner>
+          <v-btn
+            icon="mdi-content-copy"
+            variant="text"
+            size="small"
+            aria-label="Скопировать ссылку"
+            title="Скопировать ссылку"
+            @click="copyInvite"
+          />
+        </template>
+      </v-text-field>
     </v-card>
 
-    <v-card v-if="activeRound" class="pa-6 mb-6">
+    <v-card v-if="activeRound" class="pa-6 mb-6" data-testid="active-round">
       <div class="d-flex align-center justify-space-between flex-wrap ga-4">
         <div>
           <div class="text-overline text-medium-emphasis">Идёт оценка</div>
-          <div class="text-h6">{{ activeTask.title }}</div>
+          <h2 class="text-h6 ma-0">{{ activeTask.title }}</h2>
         </div>
         <RoundTimer
           :deadline="activeRound.deadline_at"
@@ -176,7 +187,8 @@ const removeTask = (task) => run(() => api.deleteTask(task.id))
           :color="myVote === value ? 'primary' : undefined"
           :variant="myVote === value ? 'flat' : 'outlined'"
           size="large"
-          class="vote-card"
+          :class="['vote-card', { selected: myVote === value }]"
+          :aria-pressed="myVote === value"
           @click="castVote(value)"
         >
           {{ value }}
@@ -205,9 +217,9 @@ const removeTask = (task) => run(() => api.deleteTask(task.id))
       </v-btn>
     </v-card>
 
-    <v-card v-else-if="finishedTask" class="pa-6 mb-6">
+    <v-card v-else-if="finishedTask" class="pa-6 mb-6" data-testid="finished-round">
       <div class="text-overline text-medium-emphasis">Результат раунда</div>
-      <div class="text-h6 mb-3">{{ finishedTask.title }}</div>
+      <h2 class="text-h6 ma-0 mb-3">{{ finishedTask.title }}</h2>
 
       <v-table density="compact">
         <tbody>
@@ -247,7 +259,7 @@ const removeTask = (task) => run(() => api.deleteTask(task.id))
             :key="value"
             :color="value === finishedTask.last_round.stats.suggestion ? 'primary' : undefined"
             :variant="value === finishedTask.last_round.stats.suggestion ? 'flat' : 'outlined'"
-            class="vote-card"
+            :class="['vote-card', { selected: value === finishedTask.last_round.stats.suggestion }]"
             @click="finalize(finishedTask, value)"
           >
             {{ value }}
@@ -256,9 +268,9 @@ const removeTask = (task) => run(() => api.deleteTask(task.id))
       </template>
     </v-card>
 
-    <v-card>
+    <v-card data-testid="tasks">
       <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
-        <span class="text-h6">Задачи</span>
+        <h2 class="text-h6 ma-0">Задачи</h2>
         <div v-if="isOwner" class="d-flex align-center ga-2">
           <v-text-field
             v-model="duration"
@@ -287,7 +299,7 @@ const removeTask = (task) => run(() => api.deleteTask(task.id))
             </a>
           </template>
           <template #prepend>
-            <v-chip v-if="task.final_estimate" color="success" size="small" class="mr-3">
+            <v-chip v-if="task.final_estimate" color="success" size="small" class="mr-3" data-testid="task-estimate">
               {{ task.final_estimate }}
             </v-chip>
             <v-chip
@@ -295,21 +307,26 @@ const removeTask = (task) => run(() => api.deleteTask(task.id))
               color="primary"
               size="small"
               class="mr-3"
+              data-testid="task-status"
             >
               идёт
             </v-chip>
-            <v-chip v-else size="small" variant="outlined" class="mr-3">—</v-chip>
+            <v-chip v-else size="small" variant="outlined" class="mr-3" data-testid="task-status">—</v-chip>
           </template>
           <template v-if="isOwner" #append>
             <v-btn
               variant="text"
               icon="mdi-play-circle-outline"
+              aria-label="Начать оценку"
+              title="Начать оценку"
               :disabled="!!activeRound"
               @click="startRound(task)"
             />
             <v-btn
               variant="text"
               icon="mdi-delete-outline"
+              aria-label="Удалить"
+              title="Удалить"
               :disabled="!!activeRound"
               @click="removeTask(task)"
             />
@@ -320,7 +337,7 @@ const removeTask = (task) => run(() => api.deleteTask(task.id))
 
     <v-dialog v-model="taskDialog" max-width="520">
       <v-card class="pa-6">
-        <v-card-title class="text-h6 px-0">Новая задача</v-card-title>
+        <v-card-title class="px-0"><h2 class="text-h6 ma-0">Новая задача</h2></v-card-title>
         <v-form @submit.prevent="createTask">
           <v-text-field v-model="newTask.title" label="Название" required />
           <v-textarea v-model="newTask.description" label="Описание" rows="3" />

@@ -1,5 +1,5 @@
 import { expect, test } from '../fixtures.js'
-import { makeUser, registerViaApi } from '../helpers.js'
+import { fieldError, makeUser, registerViaApi, topbar } from '../helpers.js'
 
 /** UC-01. Регистрация. */
 test.describe('UC-01 Регистрация', () => {
@@ -13,7 +13,7 @@ test.describe('UC-01 Регистрация', () => {
     await page.getByRole('button', { name: 'Создать аккаунт' }).click()
 
     await expect(page).toHaveURL(/\/rooms$/)
-    await expect(page.locator('.topbar-user')).toContainText(user.name)
+    await expect(topbar(page)).toContainText(user.name)
 
     const me = await page.request.get('/api/me')
     expect(me.status()).toBe(200)
@@ -47,10 +47,10 @@ test.describe('UC-01 Регистрация', () => {
     await page.getByRole('button', { name: 'Создать аккаунт' }).click()
 
     await expect(page).toHaveURL(/\/register$/)
-    // Ошибка выводится сразу после соответствующего поля.
-    await expect(page.locator('label:has-text("Имя") + p.error')).toBeVisible()
-    await expect(page.locator('label:has-text("Пароль") + p.error')).toBeVisible()
-    await expect(page.locator('label:has-text("Email") + p.error')).toHaveCount(0)
+    // Ошибка выводится под соответствующим полем.
+    await expect(fieldError(page, 'Имя')).toHaveText(/\S/)
+    await expect(fieldError(page, 'Пароль')).toHaveText(/\S/)
+    await expect(fieldError(page, 'Email')).toBeEmpty()
   })
 
   test('API: правила валидации — email, имя 2–50, пароль от 8 символов', async ({ request }) => {

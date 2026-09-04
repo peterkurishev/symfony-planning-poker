@@ -52,6 +52,6 @@ onUnmounted(() => clearInterval(interval))
 
 <template>
   <v-progress-circular :model-value="progress" :color="color" size="72" width="6">
-    <span class="text-body-1 font-weight-medium">{{ label }}</span>
+    <span class="text-body-1 font-weight-medium" data-testid="timer">{{ label }}</span>
   </v-progress-circular>
 </template>

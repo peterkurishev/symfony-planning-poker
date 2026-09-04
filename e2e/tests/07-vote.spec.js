@@ -5,6 +5,7 @@ import {
   createTaskViaApi,
   joinAsNewMember,
   makeUser,
+  memberChip,
   openRoom,
   registerViaApi,
   startRoundViaApi,
@@ -27,7 +28,7 @@ test.describe('UC-07 Голосование', () => {
 
     const ownerRound = activeRoundCard(page)
     const memberRound = activeRoundCard(memberPage)
-    const memberBadge = ownerRound.locator('.badge', { hasText: member.name })
+    const memberBadge = memberChip(page, member.name)
 
     // Голос: карточка выделяется у участника, владелец видит факт голосования.
     await voteCard(memberRound, '5').click()
@@ -108,7 +109,7 @@ test.describe('UC-07 Голосование', () => {
     await expect(page.getByText('Проголосовали все участники')).toHaveCount(0)
 
     await memberPage.request.post(`/api/rounds/${round.id}/vote`, { data: { value: '5' } })
-    await expect(page.getByText('Проголосовали все участники — можно остановить раунд.')).toBeVisible()
+    await expect(page.getByText('Проголосовали все участники — можно остановить раунд')).toBeVisible()
     await expect(activeRoundCard(page).getByText(/Проголосовали 2 из 2/)).toBeVisible()
 
     await context.close()

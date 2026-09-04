@@ -6,6 +6,7 @@ import {
   makeUser,
   openRoom,
   registerViaApi,
+  selectScale,
   startRoundViaApi,
   uniq,
 } from '../helpers.js'
@@ -18,13 +19,13 @@ test.describe('UC-03 Комната', () => {
 
     await page.goto('/rooms')
     await page.getByLabel('Название').fill(name)
-    await page.getByLabel('Шкала оценки').selectOption('fibonacci')
-    await page.getByLabel('Таймер раунда, секунд').fill('90')
+    await selectScale(page, 'Фибоначчи')
+    await page.getByLabel('Таймер, сек').fill('90')
     await page.getByRole('button', { name: 'Создать комнату' }).click()
 
     await expect(page).toHaveURL(/\/rooms\/[0-9a-f-]{36}$/)
     await expect(page.getByRole('heading', { level: 1, name })).toBeVisible()
-    await expect(page.locator('.badge', { hasText: 'fibonacci' })).toBeVisible()
+    await expect(page.getByTestId('room-scale')).toHaveText('fibonacci')
 
     const invite = page.locator('input[readonly]')
     await expect(invite).toHaveValue(/\/join\/[A-Za-z0-9]{12}$/)
@@ -49,9 +50,9 @@ test.describe('UC-03 Комната', () => {
     await page.getByRole('button', { name: 'Создать комнату' }).click()
     await expect(page.getByText('Название комнаты должно быть от 2 до 100 символов')).toBeVisible()
 
-    // Таймер вне диапазона останавливает встроенная валидация поля (min/max), форма не уходит на сервер.
+    // Таймер вне диапазона: поле помечено невалидным (min/max), комната не создаётся.
     await page.getByLabel('Название').fill('Нормальное название')
-    const timer = page.getByLabel('Таймер раунда, секунд')
+    const timer = page.getByLabel('Таймер, сек')
     await timer.fill('5')
     await page.getByRole('button', { name: 'Создать комнату' }).click()
     expect(await timer.evaluate((el) => el.validity.rangeUnderflow)).toBe(true)
@@ -85,7 +86,7 @@ test.describe('UC-03 Комната', () => {
     await expect(memberPage.getByRole('heading', { level: 1, name: room.name })).toBeVisible()
 
     // Событие member.joined доставляется владельцу по SSE без перезагрузки.
-    await expect(page.getByText(/Участники:/)).toContainText(member.name)
+    await expect(page.getByTestId('members')).toContainText(member.name)
 
     // Повторное присоединение не дублирует участника.
     await memberPage.goto(`/join/${room.invite_code}`)

@@ -77,14 +77,52 @@ export async function joinAsNewMember(browser, room, label = 'member') {
   return { context, page, user }
 }
 
+/** Имя текущего пользователя показывается в шапке (v-app-bar → role=banner). */
+export function topbar(page) {
+  return page.getByRole('banner')
+}
+
+/**
+ * Сообщение об ошибке поля Vuetify (v-text-field :error-messages). Контейнер .v-messages
+ * с role=alert есть у каждого поля всегда, поэтому «нет ошибки» проверяется через toBeEmpty().
+ */
+export function fieldError(page, label) {
+  return page.locator('.v-input', { has: page.getByLabel(label) }).getByRole('alert')
+}
+
+/** Общая ошибка формы/страницы (v-alert). */
+export function errorAlert(page) {
+  return page.locator('.v-alert').filter({ hasText: /\S/ })
+}
+
+/** v-select — не <select>: открываем меню и выбираем пункт по заголовку. */
+export async function selectScale(page, title) {
+  // Клик по внутреннему input перехватывает .v-field__input, поэтому кликаем по полю целиком.
+  await page.locator('.v-select', { has: page.getByLabel('Шкала оценки') }).locator('.v-field').click()
+  await page.getByRole('option', { name: title, exact: true }).click()
+}
+
+/** Открыть диалог «Новая задача» на странице комнаты (только у владельца). */
+export async function openTaskDialog(page) {
+  await page.getByRole('button', { name: 'Задача', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByRole('heading', { name: 'Новая задача' })).toBeVisible()
+  return dialog
+}
+
 /** Блок активного раунда на странице комнаты. */
 export function activeRoundCard(page) {
-  return page.locator('.card', { has: page.getByRole('heading', { level: 2, name: /^Оценка:/ }) })
+  return page.getByTestId('active-round')
 }
 
 /** Блок результатов последнего завершённого раунда. */
 export function resultCard(page) {
-  return page.locator('.card', { has: page.getByRole('heading', { level: 2, name: /^Результат:/ }) })
+  return page.getByTestId('finished-round')
+}
+
+/** Чип участника в шапке комнаты; при отданном голосе получает класс active. */
+export function memberChip(page, name) {
+  return page.getByTestId('members').getByTestId('member').filter({ hasText: name })
 }
 
 /** Карточка значения шкалы (в блоке активного раунда или в блоке фиксации итога). */
@@ -92,10 +130,14 @@ export function voteCard(scope, value) {
   return scope.locator('.vote-card', { hasText: new RegExp(`^\\s*${escapeRegExp(value)}\\s*$`) })
 }
 
+/** Все строки списка «Задачи» в порядке отображения. */
+export function taskRows(page) {
+  return page.getByTestId('tasks').locator('.v-list-item')
+}
+
 /** Строка задачи в списке «Задачи». */
 export function taskRow(page, title) {
-  return page.locator('.card', { has: page.getByRole('heading', { level: 2, name: 'Задачи' }) })
-    .locator('li', { hasText: title })
+  return taskRows(page).filter({ hasText: title })
 }
 
 function escapeRegExp(value) {

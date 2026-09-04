@@ -18,9 +18,12 @@ security:
         main:
             lazy: true
             provider: app_user_provider
+            # Кроме лимита «email + IP» Symfony держит общий лимит по IP (5 × max_attempts).
+            # Интервал вынесен в env: в dev/e2e он короткий, иначе e2e-тесты, идущие
+            # с одного IP, блокируют друг другу вход на 15 минут.
             login_throttling:
                 max_attempts: 5
-                interval: '15 minutes'
+                interval: '%env(LOGIN_THROTTLE_INTERVAL)%'
             json_login:
                 check_path: api_login
                 username_path: email

@@ -5,6 +5,7 @@ import {
   createTaskViaApi,
   joinAsNewMember,
   makeUser,
+  memberChip,
   openRoom,
   registerViaApi,
   startRoundViaApi,
@@ -31,19 +32,19 @@ test.describe('UC-06 Запуск раунда', () => {
     await taskRow(page, task.title).getByRole('button', { name: 'Начать оценку' }).click()
 
     const ownerRound = activeRoundCard(page)
-    await expect(ownerRound.getByRole('heading', { name: `Оценка: ${task.title}` })).toBeVisible()
-    await expect(ownerRound.locator('.timer')).toHaveText(/^0[4-5]:[0-5]\d$/)
+    await expect(ownerRound.getByRole('heading', { name: task.title })).toBeVisible()
+    await expect(ownerRound.getByTestId('timer')).toHaveText(/^0[4-5]:[0-5]\d$/)
     await expect(ownerRound.locator('.vote-card')).toHaveCount(13)
     await expect(ownerRound.getByText(/Проголосовали 0 из 2/)).toBeVisible()
     await expect(ownerRound.getByRole('button', { name: 'Остановить оценку' })).toBeVisible()
-    await expect(taskRow(page, task.title).locator('.badge', { hasText: 'идёт оценка' })).toBeVisible()
+    await expect(taskRow(page, task.title).getByTestId('task-status')).toHaveText('идёт')
     // Пока раунд идёт, второй запустить нельзя.
     await expect(taskRow(page, other.title).getByRole('button', { name: 'Начать оценку' })).toBeDisabled()
 
     // Участник получил round.started: видит задачу, отсчёт и карточки, но не кнопку остановки.
     const memberRound = activeRoundCard(memberPage)
-    await expect(memberRound.getByRole('heading', { name: `Оценка: ${task.title}` })).toBeVisible()
-    await expect(memberRound.locator('.timer')).toBeVisible()
+    await expect(memberRound.getByRole('heading', { name: task.title })).toBeVisible()
+    await expect(memberRound.getByTestId('timer')).toBeVisible()
     await expect(memberRound.getByRole('button', { name: 'Остановить оценку' })).toHaveCount(0)
 
     const fresh = await (await page.request.get(`/api/rooms/${room.id}`)).json()
@@ -117,12 +118,12 @@ test.describe('UC-06 Запуск раунда', () => {
     await openRoom(memberPage, room.id, room.name)
 
     const memberRound = activeRoundCard(memberPage)
-    await expect(memberRound.getByRole('heading', { name: `Оценка: ${task.title}` })).toBeVisible()
-    await expect(memberRound.locator('.timer')).toHaveText(/^0[01]:[0-5]\d$/)
+    await expect(memberRound.getByRole('heading', { name: task.title })).toBeVisible()
+    await expect(memberRound.getByTestId('timer')).toHaveText(/^0[01]:[0-5]\d$/)
 
     await voteCard(memberRound, '5').click()
     await expect(voteCard(memberRound, '5')).toHaveClass(/selected/)
-    await expect(memberRound.locator('.badge.active', { hasText: user.name })).toBeVisible()
+    await expect(memberChip(memberPage, user.name)).toHaveClass(/active/)
 
     await context.close()
   })

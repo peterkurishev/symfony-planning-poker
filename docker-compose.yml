@@ -8,6 +8,8 @@ services:
       DATABASE_URL: "postgresql://app:app@postgres:5432/app?serverVersion=16&charset=utf8"
       REDIS_URL: "redis://redis:6379"
       MESSENGER_TRANSPORT_DSN: "redis://redis:6379/messages"
+      # Короткое окно троттлинга входа: e2e-тесты ходят с одного IP и быстро выбирают общий лимит.
+      LOGIN_THROTTLE_INTERVAL: "1 minute"
     depends_on:
       postgres:
         condition: service_healthy
@@ -25,6 +27,8 @@ services:
       DATABASE_URL: "postgresql://app:app@postgres:5432/app?serverVersion=16&charset=utf8"
       REDIS_URL: "redis://redis:6379"
       MESSENGER_TRANSPORT_DSN: "redis://redis:6379/messages"
+      # Короткое окно троттлинга входа: e2e-тесты ходят с одного IP и быстро выбирают общий лимит.
+      LOGIN_THROTTLE_INTERVAL: "1 minute"
     depends_on:
       postgres:
         condition: service_healthy

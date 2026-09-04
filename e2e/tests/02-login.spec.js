@@ -1,5 +1,5 @@
 import { expect, test } from '../fixtures.js'
-import { createRoomViaApi, makeUser, registerViaApi } from '../helpers.js'
+import { createRoomViaApi, errorAlert, makeUser, registerViaApi, topbar } from '../helpers.js'
 
 /** UC-02. Вход в систему. */
 test.describe('UC-02 Вход', () => {
@@ -21,7 +21,7 @@ test.describe('UC-02 Вход', () => {
     await page.getByRole('button', { name: 'Войти' }).click()
 
     await expect(page).toHaveURL(/\/rooms$/)
-    await expect(page.locator('.topbar-user')).toContainText(user.name)
+    await expect(topbar(page)).toContainText(user.name)
   })
 
   test('2а: неверный пароль — общая ошибка без уточнения', async ({ page, browser }) => {
@@ -55,7 +55,7 @@ test.describe('UC-02 Вход', () => {
     await page.getByLabel('Email').fill(user.email)
     await page.getByLabel('Пароль').fill(user.password)
     await page.getByRole('button', { name: 'Войти' }).click()
-    await expect(page.locator('p.error')).toBeVisible()
+    await expect(errorAlert(page)).toBeVisible()
     await expect(page).toHaveURL(/\/login$/)
   })
 
@@ -77,7 +77,7 @@ test.describe('UC-02 Вход', () => {
 
     await expect(page).toHaveURL(new RegExp(`/rooms/${room.id}$`))
     await expect(page.getByRole('heading', { level: 1, name: room.name })).toBeVisible()
-    await expect(page.getByText(/Участники:/)).toContainText(guest.name)
+    await expect(page.getByTestId('members')).toContainText(guest.name)
   })
 
   test('выход уничтожает сессию, защищённые страницы снова требуют входа', async ({ page }) => {

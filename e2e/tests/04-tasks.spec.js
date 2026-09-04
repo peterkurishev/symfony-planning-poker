@@ -5,9 +5,11 @@ import {
   joinAsNewMember,
   makeUser,
   openRoom,
+  openTaskDialog,
   registerViaApi,
   startRoundViaApi,
   taskRow,
+  taskRows,
   uniq,
 } from '../helpers.js'
 
@@ -22,16 +24,18 @@ test.describe('UC-04 Задачи', () => {
 
     await openRoom(page, room.id, room.name)
     const title = `Задача ${uniq()}`
-    await page.getByLabel('Название').fill(title)
-    await page.getByLabel('Описание').fill('Описание задачи')
-    await page.getByLabel('Ссылка на тикет').fill('https://tracker.example.com/T-1')
-    await page.getByRole('button', { name: 'Добавить' }).click()
+    const dialog = await openTaskDialog(page)
+    await dialog.getByLabel('Название').fill(title)
+    await dialog.getByLabel('Описание').fill('Описание задачи')
+    await dialog.getByLabel('Ссылка на тикет').fill('https://tracker.example.com/T-1')
+    await dialog.getByRole('button', { name: 'Добавить' }).click()
 
+    await expect(dialog).toBeHidden()
     await expect(taskRow(page, title)).toBeVisible()
-    // Форма очищается после добавления.
-    await expect(page.getByLabel('Название')).toHaveValue('')
     // Событие task.created у участника.
     await expect(taskRow(memberPage, title)).toBeVisible()
+    // Форма очищается после добавления.
+    await expect((await openTaskDialog(page)).getByLabel('Название')).toHaveValue('')
 
     const fresh = await (await page.request.get(`/api/rooms/${room.id}`)).json()
     const task = fresh.tasks.find((t) => t.title === title)
@@ -53,7 +57,7 @@ test.describe('UC-04 Задачи', () => {
     expect(second.position).toBeGreaterThan(first.position)
 
     await openRoom(page, room.id, room.name)
-    const titles = await page.locator('ul.plain li').allInnerTexts()
+    const titles = await taskRows(page).allInnerTexts()
     expect(titles[0]).toContain('Первая')
     expect(titles[1]).toContain('Вторая')
   })
@@ -63,8 +67,9 @@ test.describe('UC-04 Задачи', () => {
     const room = await createRoomViaApi(page)
     await openRoom(page, room.id, room.name)
 
-    await page.getByLabel('Название').fill('x'.repeat(201))
-    await page.getByRole('button', { name: 'Добавить' }).click()
+    const dialog = await openTaskDialog(page)
+    await dialog.getByLabel('Название').fill('x'.repeat(201))
+    await dialog.getByRole('button', { name: 'Добавить' }).click()
     await expect(page.getByText('Название задачи должно быть от 1 до 200 символов')).toBeVisible()
   })
 
@@ -150,7 +155,7 @@ test.describe('UC-04 Задачи', () => {
 
     await openRoom(memberPage, room.id, room.name)
     await expect(taskRow(memberPage, task.title)).toBeVisible()
-    await expect(memberPage.getByRole('heading', { name: 'Новая задача' })).toHaveCount(0)
+    await expect(memberPage.getByRole('button', { name: 'Задача', exact: true })).toHaveCount(0)
     await expect(memberPage.getByRole('button', { name: 'Начать оценку' })).toHaveCount(0)
     await expect(memberPage.getByRole('button', { name: 'Удалить' })).toHaveCount(0)
 

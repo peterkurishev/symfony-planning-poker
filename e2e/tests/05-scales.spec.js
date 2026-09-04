@@ -8,6 +8,7 @@ import {
   openRoom,
   registerViaApi,
   resultCard,
+  selectScale,
   startRoundViaApi,
   voteCard,
 } from '../helpers.js'
@@ -46,7 +47,7 @@ test.describe('UC-05 Шкалы', () => {
     await registerViaApi(page)
     await page.goto('/rooms')
     await page.getByLabel('Название').fill('Шкала')
-    await page.getByLabel('Шкала оценки').selectOption('custom')
+    await selectScale(page, 'Произвольная')
 
     await page.getByLabel('Значения через запятую').fill('S, M, S')
     await page.getByRole('button', { name: 'Создать комнату' }).click()
@@ -112,7 +113,7 @@ test.describe('UC-05 Шкалы', () => {
     })
 
     await openRoom(page, room.id, room.name)
-    await expect(resultCard(page).getByText('Чаще всего выбирали: M')).toBeVisible()
+    await expect(resultCard(page).getByText(/Чаще всего: M/)).toBeVisible()
 
     await a.context.close()
     await b.context.close()
