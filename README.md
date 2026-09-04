@@ -24,6 +24,7 @@ docker compose exec php bin/console doctrine:migrations:migrate --no-interaction
 | worker | `messenger:consume async` — остановка раундов по таймеру |
 | postgres | долговременные данные |
 | redis | сессии, голоса активного раунда, очередь, поток событий |
+| e2e | Playwright-тесты; профиль `e2e`, не стартует вместе со стеком |
 
 ## Структура
 
@@ -31,6 +32,7 @@ docker compose exec php bin/console doctrine:migrations:migrate --no-interaction
 - `API.md` — справочник HTTP API
 - `backend/` — Symfony: сущности, сервисы, контроллеры, миграции
 - `frontend/` — Vue SPA: экраны входа, списка комнат, комнаты с оценкой
+- `e2e/` — end-to-end тесты (Playwright), по одному файлу на сценарий из `usecases/`
 
 ## Как это работает
 
@@ -46,4 +48,18 @@ make up          # поднять всё
 make migrate     # применить миграции
 make logs        # логи
 make console ARGS="debug:router"
+make e2e         # e2e-тесты в контейнере Playwright (стек должен быть поднят)
+make e2e SCREENSHOTS=1   # то же со скриншотом после каждого шага
+make e2e-report  # HTML-отчёт последнего прогона на http://localhost:9323
 ```
+
+## Тесты
+
+E2E-тесты живут в `e2e/` и запускаются в контейнере `mcr.microsoft.com/playwright` против работающего стека
+(`http://frontend:5173` внутри docker-сети). Каждый тест регистрирует своих пользователей и создаёт свои комнаты,
+поэтому база не сбрасывается. Подмножество: `make e2e ARGS="tests/08-finish-round.spec.js"`.
+Артефакты (`test-results/`, `playwright-report/`) — в `e2e/`.
+
+`make e2e SCREENSHOTS=1` включает снимок экрана после каждого шага — действия (переход, клик, ввод) и успешной
+проверки `expect` над элементом или страницей: файлы `e2e/test-results/<тест>/steps/NNN-<шаг>.png`, они же
+прикрепляются к HTML-отчёту (`make e2e-report`). По умолчанию выключено, чтобы не замедлять прогон.
