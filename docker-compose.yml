@@ -84,13 +84,16 @@ services:
     image: mcr.microsoft.com/playwright:v1.62.1-noble
     profiles: ["e2e"]
     working_dir: /e2e
+    # От uid/gid хоста (Makefile подставляет), чтобы отчёты и скриншоты в ./e2e не оказались root-овыми.
+    user: "${E2E_UID:-1000}:${E2E_GID:-1000}"
+    shm_size: "1gb"
     command: sh -c "npm install --no-audit --no-fund && npx playwright test"
     environment:
       E2E_BASE_URL: "http://frontend:5173"
       CI: "1"
+      HOME: /tmp
     volumes:
       - ./e2e:/e2e
-      - e2e_modules:/e2e/node_modules
     depends_on:
       - frontend
       - worker
@@ -99,4 +102,3 @@ volumes:
   postgres_data:
   redis_data:
   frontend_modules:
-  e2e_modules:
