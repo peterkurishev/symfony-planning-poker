@@ -1,10 +1,12 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import vuetify from 'vite-plugin-vuetify'
 
 const apiTarget = process.env.API_URL ?? 'http://localhost:8080'
 
 export default defineConfig({
-  plugins: [vue()],
+  // Автоимпорт компонентов Vuetify: в бандл попадают только используемые.
+  plugins: [vue(), vuetify({ autoImport: true })],
   server: {
     host: '0.0.0.0',
     port: 5173,
@@ -12,7 +14,6 @@ export default defineConfig({
       '/api': {
         target: apiTarget,
         changeOrigin: true,
-        // Поток событий не должен буферизоваться прокси.
         configure: (proxy) => {
           proxy.on('proxyRes', (proxyRes) => {
             if (proxyRes.headers['content-type']?.includes('text/event-stream')) {

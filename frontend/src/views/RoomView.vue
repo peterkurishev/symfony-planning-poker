@@ -9,10 +9,11 @@ const props = defineProps({ id: { type: String, required: true } })
 
 const room = ref(null)
 const error = ref('')
-const notice = ref('')
+const snackbar = ref({ show: false, text: '' })
 const myVote = ref(null)
 const newTask = ref({ title: '', description: '', external_url: '' })
 const duration = ref(60)
+const taskDialog = ref(false)
 let unsubscribe = null
 
 const isOwner = computed(() => room.value && session.user && room.value.owner.id === session.user.id)
@@ -25,10 +26,21 @@ const activeRound = computed(() => activeTask.value?.last_round ?? null)
 const finishedTask = computed(() => {
   if (activeTask.value) return null
   const withRounds = (room.value?.tasks ?? []).filter((task) => task.last_round?.status === 'finished')
-  return withRounds.sort(
-    (a, b) => new Date(b.last_round.finished_at) - new Date(a.last_round.finished_at),
-  )[0] ?? null
+  return (
+    withRounds.sort((a, b) => new Date(b.last_round.finished_at) - new Date(a.last_round.finished_at))[0] ??
+    null
+  )
 })
+
+const inviteLink = computed(() =>
+  room.value ? `${window.location.origin}/join/${room.value.invite_code}` : '',
+)
+
+const votedCount = computed(() => activeRound.value?.voted_user_ids.length ?? 0)
+
+function toast(text) {
+  snackbar.value = { show: true, text }
+}
 
 async function reload() {
   try {
@@ -42,9 +54,11 @@ async function reload() {
 
 function run(action) {
   error.value = ''
-  return action().then(reload).catch((e) => {
-    error.value = e.message
-  })
+  return action()
+    .then(reload)
+    .catch((e) => {
+      error.value = e.message
+    })
 }
 
 watch(
@@ -56,9 +70,8 @@ watch(
     unsubscribe = subscribeToRoom(id, (event) => {
       if (event === 'round.started') myVote.value = null
       if (event === 'round.all_voted' && isOwner.value) {
-        notice.value = 'Проголосовали все участники — можно остановить раунд.'
+        toast('Проголосовали все участники — можно остановить раунд')
       }
-      if (event === 'round.finished') notice.value = ''
       reload()
     })
   },
@@ -67,27 +80,18 @@ watch(
 
 onUnmounted(() => unsubscribe?.())
 
-const inviteLink = computed(() =>
-  room.value ? `${window.location.origin}/join/${room.value.invite_code}` : '',
-)
-
 function copyInvite() {
   navigator.clipboard?.writeText(inviteLink.value)
-  notice.value = 'Ссылка скопирована'
+  toast('Ссылка скопирована')
 }
 
-function memberName(userId) {
-  return room.value?.members.find((member) => member.id === userId)?.name ?? '—'
-}
-
-function hasVoted(userId) {
-  return (activeRound.value?.voted_user_ids ?? []).includes(userId)
-}
+const hasVoted = (userId) => (activeRound.value?.voted_user_ids ?? []).includes(userId)
 
 const createTask = () =>
   run(async () => {
     await api.createTask(props.id, newTask.value)
     newTask.value = { title: '', description: '', external_url: '' }
+    taskDialog.value = false
   })
 
 const startRound = (task) => run(() => api.startRound(task.id, { duration_sec: Number(duration.value) }))
@@ -109,129 +113,234 @@ const removeTask = (task) => run(() => api.deleteTask(task.id))
 </script>
 
 <template>
-  <p v-if="error" class="error">{{ error }}</p>
-  <div v-if="room">
-    <div class="card">
-      <div class="between">
-        <h1>{{ room.name }}</h1>
-        <span class="badge">{{ room.scale.type }}</span>
-      </div>
-      <p class="muted">Участники: {{ room.members.map((m) => m.name).join(', ') }}</p>
-      <div class="row">
-        <input :value="inviteLink" readonly />
-        <button class="secondary" type="button" @click="copyInvite">Скопировать ссылку</button>
-      </div>
-      <p v-if="notice" class="muted">{{ notice }}</p>
-    </div>
+  <v-alert v-if="error" type="error" variant="tonal" density="compact" class="mb-4" closable>
+    {{ error }}
+  </v-alert>
 
-    <div v-if="activeRound" class="card">
-      <div class="between">
-        <h2>Оценка: {{ activeTask.title }}</h2>
-        <RoundTimer :deadline="activeRound.deadline_at" @expired="reload" />
+  <template v-if="room">
+    <v-card class="pa-6 mb-6">
+      <div class="d-flex align-center justify-space-between flex-wrap ga-2">
+        <div class="text-h6">{{ room.name }}</div>
+        <div class="d-flex ga-2">
+          <v-chip size="small" variant="tonal" prepend-icon="mdi-scale-balance">
+            {{ room.scale.type }}
+          </v-chip>
+          <v-chip size="small" variant="tonal" prepend-icon="mdi-timer-outline">
+            {{ room.default_timer_sec }} c
+          </v-chip>
+        </div>
       </div>
-      <div class="cards">
-        <button
+
+      <div class="d-flex align-center flex-wrap ga-1 my-3">
+        <v-chip
+          v-for="member in room.members"
+          :key="member.id"
+          size="small"
+          :color="hasVoted(member.id) ? 'success' : undefined"
+          :variant="hasVoted(member.id) ? 'flat' : 'outlined'"
+          :prepend-icon="hasVoted(member.id) ? 'mdi-check' : 'mdi-account-outline'"
+        >
+          {{ member.name }}
+        </v-chip>
+      </div>
+
+      <v-text-field
+        :model-value="inviteLink"
+        label="Ссылка-приглашение"
+        readonly
+        hide-details
+        append-inner-icon="mdi-content-copy"
+        @click:append-inner="copyInvite"
+      />
+    </v-card>
+
+    <v-card v-if="activeRound" class="pa-6 mb-6">
+      <div class="d-flex align-center justify-space-between flex-wrap ga-4">
+        <div>
+          <div class="text-overline text-medium-emphasis">Идёт оценка</div>
+          <div class="text-h6">{{ activeTask.title }}</div>
+        </div>
+        <RoundTimer
+          :deadline="activeRound.deadline_at"
+          :duration="activeRound.duration_sec"
+          @expired="reload"
+        />
+      </div>
+
+      <v-divider class="my-4" />
+
+      <div class="d-flex flex-wrap ga-2">
+        <v-btn
           v-for="value in room.scale.votable"
           :key="value"
-          type="button"
+          :color="myVote === value ? 'primary' : undefined"
+          :variant="myVote === value ? 'flat' : 'outlined'"
+          size="large"
           class="vote-card"
-          :class="{ selected: myVote === value }"
           @click="castVote(value)"
         >
           {{ value }}
-        </button>
+        </v-btn>
       </div>
-      <p class="muted">
-        Проголосовали {{ activeRound.voted_user_ids.length }} из {{ room.members.length }}:
-        <template v-for="member in room.members" :key="member.id">
-          <span class="badge" :class="{ active: hasVoted(member.id) }">{{ member.name }}</span>
-        </template>
-      </p>
-      <button v-if="isOwner" class="secondary" type="button" @click="finishRound">
-        Остановить оценку
-      </button>
-    </div>
 
-    <div v-else-if="finishedTask" class="card">
-      <h2>Результат: {{ finishedTask.title }}</h2>
-      <table>
+      <v-progress-linear
+        :model-value="(votedCount / room.members.length) * 100"
+        color="success"
+        height="6"
+        rounded
+        class="mt-4"
+      />
+      <div class="text-body-2 text-medium-emphasis mt-2">
+        Проголосовали {{ votedCount }} из {{ room.members.length }}
+      </div>
+
+      <v-btn
+        v-if="isOwner"
+        class="mt-4"
+        color="secondary"
+        prepend-icon="mdi-stop-circle-outline"
+        @click="finishRound"
+      >
+        Остановить оценку
+      </v-btn>
+    </v-card>
+
+    <v-card v-else-if="finishedTask" class="pa-6 mb-6">
+      <div class="text-overline text-medium-emphasis">Результат раунда</div>
+      <div class="text-h6 mb-3">{{ finishedTask.title }}</div>
+
+      <v-table density="compact">
         <tbody>
           <tr v-for="vote in finishedTask.last_round.votes" :key="vote.user.id">
             <td>{{ vote.user.name }}</td>
-            <td>{{ vote.value }}</td>
+            <td class="text-right font-weight-medium">{{ vote.value }}</td>
           </tr>
         </tbody>
-      </table>
-      <p class="muted" v-if="finishedTask.last_round.stats.numeric">
-        Среднее {{ finishedTask.last_round.stats.average }}, медиана
-        {{ finishedTask.last_round.stats.median }}
-      </p>
-      <p class="muted" v-else>
-        Чаще всего выбирали: {{ finishedTask.last_round.stats.mode ?? '—' }}
-      </p>
-      <p v-if="finishedTask.last_round.stats.spread" class="error">
+      </v-table>
+
+      <div class="d-flex ga-2 flex-wrap mt-4">
+        <template v-if="finishedTask.last_round.stats.numeric">
+          <v-chip variant="tonal">Среднее: {{ finishedTask.last_round.stats.average }}</v-chip>
+          <v-chip variant="tonal">Медиана: {{ finishedTask.last_round.stats.median }}</v-chip>
+        </template>
+        <v-chip v-else variant="tonal">
+          Чаще всего: {{ finishedTask.last_round.stats.mode ?? '—' }}
+        </v-chip>
+      </div>
+
+      <v-alert
+        v-if="finishedTask.last_round.stats.spread"
+        type="warning"
+        variant="tonal"
+        density="compact"
+        class="mt-4"
+      >
         Голоса сильно расходятся — стоит обсудить и переголосовать.
-      </p>
-      <div v-if="isOwner && !finishedTask.final_estimate" class="row">
-        <span class="muted">Зафиксировать итог:</span>
-        <button
-          v-for="value in room.scale.values"
-          :key="value"
-          type="button"
-          class="vote-card"
-          :class="{ selected: value === finishedTask.last_round.stats.suggestion }"
-          @click="finalize(finishedTask, value)"
-        >
-          {{ value }}
-        </button>
-      </div>
-    </div>
+      </v-alert>
 
-    <div class="card">
-      <div class="between">
-        <h2>Задачи</h2>
-        <label v-if="isOwner" class="muted">
-          Таймер, сек
-          <input v-model="duration" type="number" min="10" max="1800" style="width: 90px" />
-        </label>
-      </div>
-      <p v-if="!room.tasks.length" class="muted">Задач пока нет.</p>
-      <ul class="plain">
-        <li v-for="task in room.tasks" :key="task.id" class="between">
-          <span>
-            {{ task.title }}
-            <span v-if="task.final_estimate" class="badge done">{{ task.final_estimate }}</span>
-            <span v-else-if="task.last_round?.status === 'active'" class="badge active">идёт оценка</span>
-          </span>
-          <span v-if="isOwner" class="row">
-            <button type="button" :disabled="!!activeRound" @click="startRound(task)">
-              Начать оценку
-            </button>
-            <button class="secondary" type="button" :disabled="!!activeRound" @click="removeTask(task)">
-              Удалить
-            </button>
-          </span>
-        </li>
-      </ul>
-    </div>
+      <template v-if="isOwner && !finishedTask.final_estimate">
+        <v-divider class="my-4" />
+        <div class="text-body-2 text-medium-emphasis mb-2">Зафиксировать итоговую оценку</div>
+        <div class="d-flex flex-wrap ga-2">
+          <v-btn
+            v-for="value in room.scale.values"
+            :key="value"
+            :color="value === finishedTask.last_round.stats.suggestion ? 'primary' : undefined"
+            :variant="value === finishedTask.last_round.stats.suggestion ? 'flat' : 'outlined'"
+            class="vote-card"
+            @click="finalize(finishedTask, value)"
+          >
+            {{ value }}
+          </v-btn>
+        </div>
+      </template>
+    </v-card>
 
-    <div v-if="isOwner" class="card">
-      <h2>Новая задача</h2>
-      <form @submit.prevent="createTask">
-        <label>
-          Название
-          <input v-model="newTask.title" type="text" required />
-        </label>
-        <label>
-          Описание
-          <textarea v-model="newTask.description" rows="2"></textarea>
-        </label>
-        <label>
-          Ссылка на тикет
-          <input v-model="newTask.external_url" type="url" />
-        </label>
-        <button type="submit">Добавить</button>
-      </form>
-    </div>
-  </div>
+    <v-card>
+      <v-card-title class="d-flex align-center justify-space-between flex-wrap ga-2">
+        <span class="text-h6">Задачи</span>
+        <div v-if="isOwner" class="d-flex align-center ga-2">
+          <v-text-field
+            v-model="duration"
+            label="Таймер, сек"
+            type="number"
+            min="10"
+            max="1800"
+            density="compact"
+            hide-details
+            style="width: 140px"
+          />
+          <v-btn color="primary" prepend-icon="mdi-plus" @click="taskDialog = true">Задача</v-btn>
+        </div>
+      </v-card-title>
+
+      <v-card-text v-if="!room.tasks.length" class="text-medium-emphasis">
+        Задач пока нет.
+      </v-card-text>
+
+      <v-list v-else lines="two">
+        <v-list-item v-for="task in room.tasks" :key="task.id" :title="task.title">
+          <template #subtitle>
+            <span v-if="task.description">{{ task.description }}</span>
+            <a v-else-if="task.external_url" :href="task.external_url" target="_blank">
+              {{ task.external_url }}
+            </a>
+          </template>
+          <template #prepend>
+            <v-chip v-if="task.final_estimate" color="success" size="small" class="mr-3">
+              {{ task.final_estimate }}
+            </v-chip>
+            <v-chip
+              v-else-if="task.last_round?.status === 'active'"
+              color="primary"
+              size="small"
+              class="mr-3"
+            >
+              идёт
+            </v-chip>
+            <v-chip v-else size="small" variant="outlined" class="mr-3">—</v-chip>
+          </template>
+          <template v-if="isOwner" #append>
+            <v-btn
+              variant="text"
+              icon="mdi-play-circle-outline"
+              :disabled="!!activeRound"
+              @click="startRound(task)"
+            />
+            <v-btn
+              variant="text"
+              icon="mdi-delete-outline"
+              :disabled="!!activeRound"
+              @click="removeTask(task)"
+            />
+          </template>
+        </v-list-item>
+      </v-list>
+    </v-card>
+
+    <v-dialog v-model="taskDialog" max-width="520">
+      <v-card class="pa-6">
+        <v-card-title class="text-h6 px-0">Новая задача</v-card-title>
+        <v-form @submit.prevent="createTask">
+          <v-text-field v-model="newTask.title" label="Название" required />
+          <v-textarea v-model="newTask.description" label="Описание" rows="3" />
+          <v-text-field v-model="newTask.external_url" label="Ссылка на тикет" type="url" />
+          <div class="d-flex justify-end ga-2">
+            <v-btn variant="text" @click="taskDialog = false">Отмена</v-btn>
+            <v-btn color="primary" type="submit">Добавить</v-btn>
+          </div>
+        </v-form>
+      </v-card>
+    </v-dialog>
+  </template>
+
+  <v-skeleton-loader v-else type="card" />
+
+  <v-snackbar v-model="snackbar.show" timeout="3000">{{ snackbar.text }}</v-snackbar>
 </template>
+
+<style scoped>
+.vote-card {
+  min-width: 64px;
+}
+</style>

@@ -11,15 +11,21 @@ async function onLogout() {
 </script>
 
 <template>
-  <header class="topbar">
-    <RouterLink class="brand" to="/rooms">Оценка задач</RouterLink>
-    <div v-if="session.user" class="topbar-user">
-      <span>{{ session.user.name }}</span>
-      <button class="link" type="button" @click="onLogout">Выйти</button>
-    </div>
-  </header>
+  <v-app>
+    <v-app-bar color="primary" density="comfortable" flat>
+      <v-app-bar-title>
+        <RouterLink to="/rooms" class="text-white text-decoration-none">Оценка задач</RouterLink>
+      </v-app-bar-title>
+      <template v-if="session.user" #append>
+        <span class="mr-3 text-body-2">{{ session.user.name }}</span>
+        <v-btn variant="text" prepend-icon="mdi-logout" @click="onLogout">Выйти</v-btn>
+      </template>
+    </v-app-bar>
 
-  <main class="page">
-    <RouterView />
-  </main>
+    <v-main>
+      <v-container class="py-6" style="max-width: 960px">
+        <RouterView />
+      </v-container>
+    </v-main>
+  </v-app>
 </template>
