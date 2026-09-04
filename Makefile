@@ -1,4 +1,4 @@
-.PHONY: up down build logs sh console migrate diff install front-build worker-logs
+.PHONY: up down build logs sh console migrate diff install front-build worker-logs e2e e2e-report
 
 up:
 	docker compose up -d
@@ -32,3 +32,11 @@ front-build:
 
 worker-logs:
 	docker compose logs -f worker
+
+# E2E-тесты в контейнере Playwright; ARGS передаются playwright test (например ARGS="tests/07-vote.spec.js")
+e2e:
+	docker compose --profile e2e run --rm e2e sh -c "npm install --no-audit --no-fund && npx playwright test $(ARGS)"
+
+# HTML-отчёт последнего прогона на http://localhost:9323
+e2e-report:
+	docker compose --profile e2e run --rm -p 9323:9323 e2e npx playwright show-report --host 0.0.0.0

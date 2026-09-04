@@ -8,6 +8,8 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    // Контейнер e2e ходит на dev-сервер по имени сервиса.
+    allowedHosts: ['frontend'],
     proxy: {
       '/api': {
         target: apiTarget,
