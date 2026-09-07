@@ -1,16 +1,23 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { api } from '../lib/api.js'
-import { setUser } from '../lib/session.js'
+import { ApiError, api, errorMessage } from '../lib/api'
+import { setUser } from '../lib/session'
+import type { FieldErrors, RegisterPayload } from '../types/api'
 
 const route = useRoute()
 const router = useRouter()
 
-const form = ref({ email: '', name: '', password: '' })
-const errors = ref({})
+const form = ref<RegisterPayload>({ email: '', name: '', password: '' })
+const errors = ref<FieldErrors>({})
 const error = ref('')
 const busy = ref(false)
+
+/** Куда вернуть пользователя после регистрации: путь из query или список комнат. */
+function redirectTarget() {
+  const redirect = route.query.redirect
+  return typeof redirect === 'string' && redirect ? redirect : { name: 'rooms' }
+}
 
 async function submit() {
   error.value = ''
@@ -18,10 +25,11 @@ async function submit() {
   busy.value = true
   try {
     setUser(await api.register(form.value))
-    router.push(route.query.redirect ?? { name: 'rooms' })
+    router.push(redirectTarget())
   } catch (e) {
-    errors.value = e.errors ?? {}
-    error.value = e.errors ? '' : e.message
+    const fieldErrors = e instanceof ApiError ? e.errors : null
+    errors.value = fieldErrors ?? {}
+    error.value = fieldErrors ? '' : errorMessage(e)
   } finally {
     busy.value = false
   }

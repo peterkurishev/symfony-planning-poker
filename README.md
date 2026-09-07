@@ -2,7 +2,7 @@
 
 Planning poker для командной оценки: комнаты, задачи, шкалы, раунды с таймером и голосование в реальном времени.
 
-Стек: PHP 8.4 + Symfony (API), Vue 3 + Vite (SPA), PostgreSQL 16, Redis 7.
+Стек: PHP 8.4 + Symfony (API), Vue 3 + TypeScript + Vite (SPA), PostgreSQL 16, Redis 7.
 
 ## Запуск
 

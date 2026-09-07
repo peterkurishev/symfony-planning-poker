@@ -1,34 +1,44 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
-import { api } from '../lib/api.js'
-import { session } from '../lib/session.js'
-import { subscribeToRoom } from '../lib/roomEvents.js'
+import { api, errorMessage } from '../lib/api'
+import { session } from '../lib/session'
+import { subscribeToRoom } from '../lib/roomEvents'
 import RoundTimer from '../components/RoundTimer.vue'
+import type { CreateTaskPayload, FinishedRound, Room, Task } from '../types/api'
 
-const props = defineProps({ id: { type: String, required: true } })
+/** Задача, у которой последний раунд завершён и содержит голоса со статистикой. */
+type FinishedTask = Task & { last_round: FinishedRound }
 
-const room = ref(null)
+const props = defineProps<{ id: string }>()
+
+const room = ref<Room | null>(null)
 const error = ref('')
 const snackbar = ref({ show: false, text: '' })
-const myVote = ref(null)
-const newTask = ref({ title: '', description: '', external_url: '' })
-const duration = ref(60)
+const myVote = ref<string | null>(null)
+const newTask = ref<Required<CreateTaskPayload>>({ title: '', description: '', external_url: '' })
+/** Поле type="number" отдаёт строку, поэтому приводим к числу при запуске раунда. */
+const duration = ref<number | string>(60)
 const taskDialog = ref(false)
-let unsubscribe = null
+let unsubscribe: (() => void) | null = null
 
-const isOwner = computed(() => room.value && session.user && room.value.owner.id === session.user.id)
+const isOwner = computed(
+  () => room.value !== null && session.user !== null && room.value.owner.id === session.user.id,
+)
 
 const activeTask = computed(
   () => room.value?.tasks.find((task) => task.last_round?.status === 'active') ?? null,
 )
 const activeRound = computed(() => activeTask.value?.last_round ?? null)
 
-const finishedTask = computed(() => {
+const isFinishedTask = (task: Task): task is FinishedTask => task.last_round?.status === 'finished'
+
+const finishedTask = computed<FinishedTask | null>(() => {
   if (activeTask.value) return null
-  const withRounds = (room.value?.tasks ?? []).filter((task) => task.last_round?.status === 'finished')
+  const withRounds = (room.value?.tasks ?? []).filter(isFinishedTask)
   return (
-    withRounds.sort((a, b) => new Date(b.last_round.finished_at) - new Date(a.last_round.finished_at))[0] ??
-    null
+    withRounds.sort(
+      (a, b) => new Date(b.last_round.finished_at).getTime() - new Date(a.last_round.finished_at).getTime(),
+    )[0] ?? null
   )
 })
 
@@ -38,7 +48,7 @@ const inviteLink = computed(() =>
 
 const votedCount = computed(() => activeRound.value?.voted_user_ids.length ?? 0)
 
-function toast(text) {
+function toast(text: string) {
   snackbar.value = { show: true, text }
 }
 
@@ -48,16 +58,16 @@ async function reload() {
     duration.value = room.value.default_timer_sec
     if (!activeRound.value) myVote.value = null
   } catch (e) {
-    error.value = e.message
+    error.value = errorMessage(e)
   }
 }
 
-function run(action) {
+function run(action: () => Promise<unknown>) {
   error.value = ''
   return action()
     .then(reload)
-    .catch((e) => {
-      error.value = e.message
+    .catch((e: unknown) => {
+      error.value = errorMessage(e)
     })
 }
 
@@ -85,7 +95,7 @@ function copyInvite() {
   toast('Ссылка скопирована')
 }
 
-const hasVoted = (userId) => (activeRound.value?.voted_user_ids ?? []).includes(userId)
+const hasVoted = (userId: string) => (activeRound.value?.voted_user_ids ?? []).includes(userId)
 
 const createTask = () =>
   run(async () => {
@@ -94,22 +104,29 @@ const createTask = () =>
     taskDialog.value = false
   })
 
-const startRound = (task) => run(() => api.startRound(task.id, { duration_sec: Number(duration.value) }))
-const finishRound = () => run(() => api.finishRound(activeRound.value.id))
+const startRound = (task: Task) =>
+  run(() => api.startRound(task.id, { duration_sec: Number(duration.value) }))
 
-const castVote = (value) =>
+const finishRound = () =>
   run(async () => {
+    if (activeRound.value) await api.finishRound(activeRound.value.id)
+  })
+
+const castVote = (value: string) =>
+  run(async () => {
+    const round = activeRound.value
+    if (!round) return
     if (myVote.value === value) {
-      await api.retractVote(activeRound.value.id)
+      await api.retractVote(round.id)
       myVote.value = null
     } else {
-      await api.vote(activeRound.value.id, value)
+      await api.vote(round.id, value)
       myVote.value = value
     }
   })
 
-const finalize = (task, value) => run(() => api.estimate(task.id, value))
-const removeTask = (task) => run(() => api.deleteTask(task.id))
+const finalize = (task: Task, value: string) => run(() => api.estimate(task.id, value))
+const removeTask = (task: Task) => run(() => api.deleteTask(task.id))
 </script>
 
 <template>
@@ -169,7 +186,7 @@ const removeTask = (task) => run(() => api.deleteTask(task.id))
       <div class="d-flex align-center justify-space-between flex-wrap ga-4">
         <div>
           <div class="text-overline text-medium-emphasis">Идёт оценка</div>
-          <h2 class="text-h6 ma-0">{{ activeTask.title }}</h2>
+          <h2 class="text-h6 ma-0">{{ activeTask?.title }}</h2>
         </div>
         <RoundTimer
           :deadline="activeRound.deadline_at"

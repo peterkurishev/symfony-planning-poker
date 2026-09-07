@@ -1,14 +1,19 @@
-<script setup>
+<script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 
-const props = defineProps({
-  deadline: { type: String, required: true },
-  duration: { type: Number, default: 0 },
-})
-const emit = defineEmits(['expired'])
+const props = withDefaults(
+  defineProps<{
+    /** Серверный дедлайн раунда в ISO 8601. */
+    deadline: string
+    /** Длительность раунда в секундах, нужна для прогресса. */
+    duration?: number
+  }>(),
+  { duration: 0 },
+)
+const emit = defineEmits<{ expired: [] }>()
 
 const now = ref(Date.now())
-let interval = null
+let interval: ReturnType<typeof setInterval> | null = null
 let expiredSent = false
 
 // Отсчёт ведётся от серверного дедлайна, а не от локальной длительности.
@@ -36,18 +41,23 @@ function tick() {
   }
 }
 
+function stop() {
+  if (interval !== null) clearInterval(interval)
+  interval = null
+}
+
 watch(
   () => props.deadline,
   () => {
     expiredSent = false
-    clearInterval(interval)
+    stop()
     interval = setInterval(tick, 250)
     tick()
   },
   { immediate: true },
 )
 
-onUnmounted(() => clearInterval(interval))
+onUnmounted(stop)
 </script>
 
 <template>

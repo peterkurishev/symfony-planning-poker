@@ -1,8 +1,8 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { api } from '../lib/api.js'
-import { setUser } from '../lib/session.js'
+import { api, errorMessage, errorStatus } from '../lib/api'
+import { setUser } from '../lib/session'
 
 const route = useRoute()
 const router = useRouter()
@@ -12,14 +12,20 @@ const password = ref('')
 const error = ref('')
 const busy = ref(false)
 
+/** Куда вернуть пользователя после входа: путь из query или список комнат. */
+function redirectTarget() {
+  const redirect = route.query.redirect
+  return typeof redirect === 'string' && redirect ? redirect : { name: 'rooms' }
+}
+
 async function submit() {
   error.value = ''
   busy.value = true
   try {
     setUser(await api.login({ email: email.value, password: password.value }))
-    router.push(route.query.redirect ?? { name: 'rooms' })
+    router.push(redirectTarget())
   } catch (e) {
-    error.value = e.status === 401 ? 'Неверный email или пароль' : e.message
+    error.value = errorStatus(e) === 401 ? 'Неверный email или пароль' : errorMessage(e)
   } finally {
     busy.value = false
   }

@@ -1,28 +1,37 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { api } from '../lib/api.js'
+import { api, errorMessage } from '../lib/api'
+import type { RoomSummary, ScaleType } from '../types/api'
+
+interface RoomForm {
+  name: string
+  scale_type: ScaleType
+  scale_values: string
+  /** Поле type="number" отдаёт строку, поэтому приводим к числу при отправке. */
+  default_timer_sec: number | string
+}
 
 const router = useRouter()
-const rooms = ref([])
+const rooms = ref<RoomSummary[]>([])
 const error = ref('')
 const busy = ref(false)
 const loading = ref(true)
-const form = ref({ name: '', scale_type: 'fibonacci', scale_values: '', default_timer_sec: 60 })
+const form = ref<RoomForm>({ name: '', scale_type: 'fibonacci', scale_values: '', default_timer_sec: 60 })
 
-const scaleTypes = [
+const scaleTypes: { title: string; value: ScaleType }[] = [
   { title: 'Фибоначчи', value: 'fibonacci' },
   { title: 'Степени двойки', value: 'pow2' },
   { title: 'Произвольная', value: 'custom' },
 ]
 
-const scaleTitle = (type) => scaleTypes.find((item) => item.value === type)?.title ?? type
+const scaleTitle = (type: ScaleType) => scaleTypes.find((item) => item.value === type)?.title ?? type
 
 onMounted(async () => {
   try {
     rooms.value = await api.rooms()
   } catch (e) {
-    error.value = e.message
+    error.value = errorMessage(e)
   } finally {
     loading.value = false
   }
@@ -40,7 +49,7 @@ async function create() {
     })
     router.push({ name: 'room', params: { id: room.id } })
   } catch (e) {
-    error.value = e.message
+    error.value = errorMessage(e)
   } finally {
     busy.value = false
   }
