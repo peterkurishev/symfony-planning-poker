@@ -1,10 +1,19 @@
 import { defineConfig, devices } from '@playwright/test'
+import { defineBddConfig } from 'playwright-bdd'
 
 // Внутри docker-контейнера e2e фронтенд доступен по имени сервиса; с хоста — по localhost.
 const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:5173'
 
+// Gherkin-сценарии (features/) превращаются в спеки в .features-gen/ командой `npx bddgen`.
+const testDir = defineBddConfig({
+  features: 'features/**/*.feature',
+  steps: 'steps/**/*.js',
+  featuresRoot: './features',
+  language: 'ru',
+})
+
 export default defineConfig({
-  testDir: './tests',
+  testDir,
   globalSetup: './global-setup.js',
   timeout: 60_000,
   expect: { timeout: 10_000 },

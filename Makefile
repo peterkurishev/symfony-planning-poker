@@ -33,13 +33,14 @@ front-build:
 worker-logs:
 	docker compose logs -f worker
 
-# E2E-тесты в контейнере Playwright; ARGS передаются playwright test (например ARGS="tests/07-vote.spec.js").
+# E2E-тесты в контейнере Playwright: Gherkin-сценарии из e2e/features/ генерируются в спеки (npx bddgen) и запускаются.
+# ARGS передаются playwright test и фильтруют сгенерированные файлы (например ARGS="07-vote" или ARGS='--grep "UC-07"').
 # SCREENSHOTS=1 включает снимок экрана после каждого шага (test-results/<тест>/steps/ и HTML-отчёт).
 SCREENSHOTS ?= 0
 export E2E_UID ?= $(shell id -u)
 export E2E_GID ?= $(shell id -g)
 e2e:
-	docker compose --profile e2e run --rm -e E2E_SCREENSHOTS=$(SCREENSHOTS) e2e sh -c "npm install --no-audit --no-fund && npx playwright test $(ARGS)"
+	docker compose --profile e2e run --rm -e E2E_SCREENSHOTS=$(SCREENSHOTS) e2e sh -c "npm install --no-audit --no-fund && npx bddgen && npx playwright test $(ARGS)"
 
 # HTML-отчёт последнего прогона на http://localhost:9323
 e2e-report:
