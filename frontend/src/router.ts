@@ -1,7 +1,14 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import { loadSession, session } from './lib/session.js'
+import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
+import { loadSession, session } from './lib/session'
 
-const routes = [
+declare module 'vue-router' {
+  interface RouteMeta {
+    /** Маршрут только для неавторизованных: вход и регистрация. */
+    guest?: boolean
+  }
+}
+
+const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/rooms' },
   { path: '/login', name: 'login', component: () => import('./views/LoginView.vue'), meta: { guest: true } },
   { path: '/register', name: 'register', component: () => import('./views/RegisterView.vue'), meta: { guest: true } },

@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { test as base } from '@playwright/test'
+import { expect as baseExpect } from '@playwright/test'
+import { test as base } from 'playwright-bdd'
 
 /**
  * Пошаговые скриншоты: после каждого действия на странице (goto, click, fill, …) и после
@@ -158,4 +159,4 @@ export const test = base.extend({
   ],
 })
 
-export const expect = enabled ? wrapExpect(base.expect) : base.expect
+export const expect = enabled ? wrapExpect(baseExpect) : baseExpect

@@ -1,9 +1,9 @@
-<script setup>
+<script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { api } from '../lib/api.js'
+import { api, errorMessage, errorStatus } from '../lib/api'
 
-const props = defineProps({ code: { type: String, required: true } })
+const props = defineProps<{ code: string }>()
 const router = useRouter()
 const error = ref('')
 
@@ -12,7 +12,7 @@ onMounted(async () => {
     const room = await api.joinRoom(props.code)
     router.replace({ name: 'room', params: { id: room.id } })
   } catch (e) {
-    error.value = e.status === 404 ? 'Комната не найдена' : e.message
+    error.value = errorStatus(e) === 404 ? 'Комната не найдена' : errorMessage(e)
   }
 })
 </script>

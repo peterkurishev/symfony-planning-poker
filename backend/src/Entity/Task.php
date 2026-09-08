@@ -50,7 +50,8 @@ class Task
 
     /** @var Collection<int, Round> */
     #[ORM\OneToMany(targetEntity: Round::class, mappedBy: 'task', cascade: ['persist', 'remove'], orphanRemoval: true)]
-    #[ORM\OrderBy(['startedAt' => 'DESC'])]
+    // started_at хранится с точностью до секунды; id (UUIDv7) упорядочен по времени и разрешает совпадения.
+    #[ORM\OrderBy(['startedAt' => 'DESC', 'id' => 'DESC'])]
     private Collection $rounds;
 
     public function __construct(Room $room, string $title, int $position)
